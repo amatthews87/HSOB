@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HSOB — Host & Play</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script>
+tailwind.config={theme:{extend:{colors:{hs:{dark:'#0d0b14',darker:'#080610',card:'#16132a',cardHover:'#1e1a36',sidebar:'#0a0818',border:'#2a244a',purple:'#8b5cf6',purpleHover:'#7c3aed',deepPurple:'#4c1d95',red:'#ef4444',redHover:'#dc2626',green:'#10b981',blue:'#3b82f6',txt:'#e2dff0',txt2:'#9d97b5',muted:'#6b6584'}}}}}
+</script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:#0d0b14;color:#e2dff0;overflow-x:hidden}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#080610}::-webkit-scrollbar-thumb{background:#2a244a;border-radius:3px}
+.game-card{transition:transform .25s,box-shadow .25s}.game-card:hover{transform:translateY(-4px);box-shadow:0 8px 25px rgba(139,92,246,.15)}.game-card:hover .game-thumb{transform:scale(1.05)}.game-thumb{transition:transform .4s}
+.nav-item{transition:background .15s,color .15s}.nav-item:hover{background:rgba(139,92,246,.1)}.nav-item.active{background:rgba(139,92,246,.15);color:#fff}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}.anim-in{animation:fadeInUp .5s ease forwards}.d1{animation-delay:.1s;opacity:0}.d2{animation-delay:.2s;opacity:0}.d3{animation-delay:.3s;opacity:0}
+@keyframes pulse-on{0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,.4)}50%{box-shadow:0 0 0 4px rgba(16,185,129,0)}}.online-dot{animation:pulse-on 2s ease infinite}
+.toast{animation:toastIn .3s ease forwards}@keyframes toastIn{from{opacity:0;transform:translateY(20px) scale(.95)}to{opacity:1;transform:translateY(0) scale(1)}}.toast-out{animation:toastOut .3s ease forwards}@keyframes toastOut{from{opacity:1;transform:translateY(0) scale(1)}to{opacity:0;transform:translateY(20px) scale(.95)}}
+.modal-bg{animation:modalBgIn .25s ease forwards}@keyframes modalBgIn{from{opacity:0}to{opacity:1}}.modal-box{animation:modalBoxIn .3s ease forwards}@keyframes modalBoxIn{from{opacity:0;transform:scale(.95) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.friend-row:hover{background:rgba(139,92,246,.05)}
+.code-editor{font-family:'Courier New',monospace;font-size:13px;tab-size:2;line-height:1.5;resize:none}
+.code-editor:focus{outline:none;box-shadow:0 0 0 2px rgba(139,92,246,.4)}
+.cat-pill.active{background:#8b5cf6;color:#fff}
+</style>
+</head>
+<body>
+
+<!-- Toast Container -->
+<div id="toast-container" class="fixed bottom-6 right-6 z-[9999] flex flex-col gap-3"></div>
+
+<!-- ===================== AUTH MODAL ===================== -->
+<div id="auth-modal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md modal-bg">
+  <div class="modal-box bg-hs-card border border-hs-border rounded-2xl p-8 w-full max-w-md mx-4">
+    <div class="text-center mb-6">
+      <div class="w-12 h-12 bg-hs-purple rounded-xl flex items-center justify-center mx-auto mb-3"><span class="text-white font-extrabold text-xl">H</span></div>
+      <h1 class="text-3xl font-extrabold text-white tracking-tight">HSOB</h1>
+      <p class="text-sm text-hs-txt2 mt-1">Host & Play HTML Games</p>
+    </div>
+    <div id="auth-tabs" class="flex mb-6 bg-hs-dark rounded-lg p-1">
+      <button onclick="switchAuthTab('login')" id="tab-login" class="flex-1 py-2 text-sm font-semibold rounded-md bg-hs-purple text-white transition-all">Log In</button>
+      <button onclick="switchAuthTab('register')" id="tab-register" class="flex-1 py-2 text-sm font-semibold rounded-md text-hs-txt2 transition-all">Sign Up</button>
+    </div>
+    <form id="login-form" onsubmit="handleLogin(event)" class="flex flex-col gap-4">
+      <div>
+        <label class="text-xs font-medium text-hs-txt2 mb-1 block">Username</label>
+        <input id="login-user" type="text" required class="w-full bg-hs-dark border border-hs-border rounded-lg px-4 py-2.5 text-sm text-hs-txt focus:outline-none focus:border-hs-purple transition-colors" placeholder="Enter username">
+      </div>
+      <div>
+        <label class="text-xs font-medium text-hs-txt2 mb-1 block">Password</label>
+        <input id="login-pass" type="password" required class="w-full bg-hs-dark border border-hs-border rounded-lg px-4 py-2.5 text-sm text-hs-txt focus:outline-none focus:border-hs-purple transition-colors" placeholder="Enter password">
+      </div>
+      <button type="submit" class="w-full bg-hs-purple hover:bg-hs-purpleHover text-white font-semibold py-2.5 rounded-lg transition-colors mt-2">Log In</button>
+    </form>
+    <form id="register-form" onsubmit="handleRegister(event)" class="flex flex-col gap-4 hidden">
+      <div>
+        <label class="text-xs font-medium text-hs-txt2 mb-1 block">Username</label>
+        <input id="reg-user" type="text" required minlength=3 class="w-full bg-hs-dark border border-hs-border rounded-lg px-4 py-2.5 text-sm text-hs-txt focus:outline-none focus:border-hs-purple transition-colors" placeholder="Pick a username">
+      </div>
+      <div>
+        <label class="text-xs font-medium text-hs-txt2 mb-1 block">Password</label>
+        <input id="reg-pass" type="password" required minlength=4 class="w-full bg-hs-dark border border-hs-border rounded-lg px-4 py-2.5 text-sm text-hs-txt focus:outline-none focus:border-hs-purple transition-colors" placeholder="Create a password">
+      </div>
+      <div>
+        <label class="text-xs font-medium text-hs-txt2 mb-1 block">Confirm Password</label>
+        <input id="reg-pass2" type="password" required class="w-full bg-hs-dark border border-hs-border rounded-lg px-4 py-2.5 text-sm text-hs-txt focus:outline-none focus:border-hs-purple transition-colors" placeholder="Confirm password">
+      </div>
+      <button type="submit" class="w-full bg-hs-purple hover:bg-hs-purpleHover text-white font-semibold py-2.5 rounded-lg transition-colors mt-2">Create Account</button>
+    </form>
+    <p class="text-[10px] text-hs-muted text-center mt-4">Static site — Data stored in localStorage</p>
+  </div>
+</div>
+
+<!-- ===================== HOST GAME MODAL ===================== -->
+<div id="host-modal" class="fixed inset-0 z-[90] hidden items-center justify-center bg-black/70 backdrop-blur-sm">
+  <div class="modal-box bg-hs-card border border-hs-border rounded-2xl p-6 w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between mb-5">
+      <h2 class="text-xl font-bold text-white">Host a New Game</h2>
+      <button onclick="closeHostModal()" class="p-1 hover:bg-white/10 rounded-lg transition-colors"><span class="iconify text-hs-txt2" data-icon="lucide:x" data-width="20"></span></button>
+    </div>
+    <form onsubmit="handleHostGame(event)" class="flex flex-col gap-5">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="text-xs font-medium text-hs-txt2 mb-1 block">Game Name *</label>
+          <input id="host-name" type="text" required class="w-full bg-hs-dark border border-hs-border rounded-lg px-4 py-2.5 text-sm text-hs-txt focus:outline-none focus:border-hs-purple transition-colors" placeholder="My Awesome Game">
+        </div>
+        <div>
+          <label class="text-xs font-medium text-hs-txt2 mb-1 block">Category</label>
+          <select id="host-cat" class="w-full bg-hs-dark border border-hs-border rounded-lg px-4 py-2.5 text-sm text-hs-txt focus:outline-none focus:border-hs-purple transition-colors">
+            <option value="Adventure">Adventure</option><option value="Puzzle">Puzzle</option><option value="Action">Action</option><option value="Strategy">Strategy</option><option value="Simulation">Simulation</option><option value="Horror">Horror</option><option value="Other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="text-xs font-medium text-hs-txt2 mb-1 block">Description</label>
+        <textarea id="host-desc" rows="2" class="w-full bg-hs-dark border border-hs-border rounded-lg px-4 py-2.5 text-sm text-hs-txt focus:outline-none focus:border-hs-purple transition-colors resize-none" placeholder="Describe your game..."></textarea>
+      </div>
+      <div>
+        <label class="text-xs font-medium text-hs-txt2 mb-1 block">Thumbnail URL (optional)</label>
+        <input id="host-thumb" type="url" class="w-full bg-hs-dark border border-hs-border rounded-lg px-4 py-2.5 text-sm text-hs-txt focus:outline-none focus:border-hs-purple transition-colors" placeholder="https://...">
+      </div>
+      <div>
+        <div class="flex items-center justify-between mb-1">
+          <label class="text-xs font-medium text-hs-txt2">HTML Game Code *</label>
+          <button type="button" onclick="loadTemplate()" class="text-[10px] text-hs-purple hover:text-hs-purpleHover font-medium transition-colors">Load Template</button>
+        </div>
+        <textarea id="host-code" required rows="12" class="code-editor w-full bg-hs-dark border border-hs-border rounded-lg px-4 py-3 text-sm text-hs-green focus:outline-none focus:border-hs-purple transition-colors" placeholder="<!DOCTYPE html>..."></textarea>
+      </div>
+      <div class="flex gap-3 justify-end">
+        <button type="button" onclick="closeHostModal()" class="px-5 py-2.5 rounded-lg border border-hs-border text-sm font-medium text-hs-txt2 hover:bg-white/5 transition-colors">Cancel</button>
+        <button type="submit" class="px-6 py-2.5 rounded-lg bg-hs-purple hover:bg-hs-purpleHover text-white text-sm font-semibold transition-colors flex items-center gap-2"><span class="iconify" data-icon="lucide:upload" data-width="16"></span>Host Game</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===================== ADD FRIEND MODAL ===================== -->
+<div id="friend-modal" class="fixed inset-0 z-[90] hidden items-center justify-center bg-black/70 backdrop-blur-sm">
+  <div class="modal-box bg-hs-card border border-hs-border rounded-2xl p-6 w-full max-w-sm mx-4">
+    <div class="flex items-center justify-between mb-5">
+      <h2 class="text-lg font-bold text-white">Add Friend</h2>
+      <button onclick="closeFriendModal()" class="p-1 hover:bg-white/10 rounded-lg transition-colors"><span class="iconify text-hs-txt2" data-icon="lucide:x" data-width="20"></span></button>
+    </div>
+    <form onsubmit="handleAddFriend(event)" class="flex flex-col gap-4">
+      <div>
+        <label class="text-xs font-medium text-hs-txt2 mb-1 block">Username</label>
+        <input id="friend-user" type="text" required class="w-full bg-hs-dark border border-hs-border rounded-lg px-4 py-2.5 text-sm text-hs-txt focus:outline-none focus:border-hs-purple transition-colors" placeholder="Enter friend's username">
+      </div>
+      <button type="submit" class="w-full bg-hs-blue hover:bg-blue-600 text-white font-semibold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2"><span class="iconify" data-icon="lucide:user-plus" data-width="16"></span>Send Request</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===================== GAME PLAYER OVERLAY ===================== -->
+<div id="game-player" class="fixed inset-0 z-[80] hidden bg-hs-darker flex flex-col md:flex-row">
+  <!-- Game Area -->
+  <div class="flex-1 flex flex-col min-h-0">
+    <div class="h-[48px] bg-hs-card border-b border-hs-border flex items-center px-4 gap-4 shrink-0">
+      <button onclick="closeGamePlayer()" class="p-1.5 hover:bg-white/10 rounded-lg transition-colors"><span class="iconify text-hs-txt2" data-icon="lucide:arrow-left" data-width="20"></span></button>
+      <h3 id="player-title" class="text-sm font-semibold text-white flex-1 truncate">Playing...</h3>
+      <span id="player-visits" class="text-xs text-hs-txt2 flex items-center gap-1"><span class="iconify" data-icon="lucide:eye" data-width="14"></span><span>0</span></span>
+      <button onclick="toggleFullscreen()" class="p-1.5 hover:bg-white/10 rounded-lg transition-colors"><span class="iconify text-hs-txt2" data-icon="lucide:maximize" data-width="18"></span></button>
+    </div>
+    <iframe id="game-iframe" class="flex-1 w-full bg-white" sandbox="allow-scripts"></iframe>
+  </div>
+  
+  <!-- Comments Sidebar -->
+  <div class="w-full md:w-80 bg-hs-sidebar border-l border-hs-border flex flex-col md:max-h-full max-h-[40vh]">
+    <div class="p-4 border-b border-hs-border shrink-0">
+      <h3 class="text-sm font-bold text-white">Comments</h3>
+    </div>
+    <div id="comments-list" class="flex-1 overflow-y-auto p-4 flex flex-col gap-3 min-h-0">
+      <!-- Comments injected here -->
+    </div>
+    <div class="p-3 border-t border-hs-border shrink-0">
+      <form onsubmit="postComment(event)" class="flex gap-2">
+        <input id="comment-input" type="text" required class="flex-1 bg-hs-dark border border-hs-border rounded-lg px-3 py-2 text-xs text-hs-txt focus:outline-none focus:border-hs-purple transition-colors" placeholder="Add a comment...">
+        <button type="submit" class="bg-hs-purple hover:bg-hs-purpleHover text-white px-3 py-2 rounded-lg transition-colors"><span class="iconify" data-icon="lucide:send" data-width="14"></span></button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MAIN APP ===================== -->
+<div id="app" class="hidden">
+
+<!-- Top Navbar -->
+<nav class="fixed top-0 left-0 right-0 h-[48px] bg-hs-darker border-b border-hs-border z-50 flex items-center px-4 gap-4">
+  <a href="#" class="flex items-center gap-2 shrink-0" onclick="event.preventDefault()">
+    <div class="w-7 h-7 bg-hs-purple rounded-lg flex items-center justify-center"><span class="text-white font-extrabold text-sm">H</span></div>
+    <span class="text-white font-extrabold text-lg tracking-tight">HSOB</span>
+  </a>
+  <div class="flex-1 max-w-[400px] relative">
+    <span class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-hs-muted" data-icon="lucide:search" data-width="16"></span>
+    <input id="searchInput" type="text" placeholder="Search games..." class="w-full bg-hs-dark border border-hs-border rounded-lg pl-9 pr-4 py-1.5 text-sm text-hs-txt placeholder:text-hs-muted focus:outline-none focus:border-hs-purple transition-colors" oninput="handleSearch(this.value)">
+  </div>
+  <div class="flex items-center gap-3 ml-auto">
+    <div class="flex items-center gap-1.5 bg-hs-dark border border-hs-border rounded-lg px-3 py-1.5">
+      <span class="iconify text-hs-purple" data-icon="lucide:eye" data-width="16"></span>
+      <span id="total-visits" class="text-sm font-semibold text-white">0</span>
+      <span class="text-[10px] text-hs-muted">visits</span>
+    </div>
+    <button onclick="openHostModal()" class="bg-hs-purple hover:bg-hs-purpleHover text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"><span class="iconify" data-icon="lucide:plus" data-width="14"></span>Host</button>
+    <button onclick="logout()" class="p-2 rounded-lg hover:bg-white/5 transition-colors" title="Log Out"><span class="iconify text-hs-txt2" data-icon="lucide:log-out" data-width="18"></span></button>
+    <div class="flex items-center gap-2">
+      <div id="nav-badge" class="hidden px-1.5 py-0.5 rounded text-[9px] font-bold bg-hs-deepPurple text-hs-purple">MOD</div>
+      <div class="w-8 h-8 rounded-full bg-gradient-to-br from-hs-purple to-hs-deepPurple flex items-center justify-center text-white text-xs font-bold" id="nav-avatar">U</div>
+    </div>
+  </div>
+</nav>
+
+<!-- Left Sidebar -->
+<aside class="fixed left-0 top-[48px] bottom-0 w-[220px] bg-hs-sidebar border-r border-hs-border z-40 overflow-y-auto py-3 px-2 flex flex-col">
+  <div class="flex flex-col gap-0.5">
+    <a href="#" class="nav-item active flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium" onclick="navigateTo('home',this,event)"><span class="iconify" data-icon="lucide:home" data-width="20"></span>Home</a>
+    <a href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-hs-txt2" onclick="navigateTo('browse',this,event)"><span class="iconify" data-icon="lucide:compass" data-width="20"></span>Browse</a>
+    <a href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-hs-txt2" onclick="navigateTo('my-games',this,event)"><span class="iconify" data-icon="lucide:gamepad-2" data-width="20"></span>My Games</a>
+  </div>
+  <div class="border-t border-hs-border my-3 mx-2"></div>
+
+  <!-- Friends -->
+  <div class="px-3 mb-2 flex items-center justify-between">
+    <h3 class="text-xs font-semibold text-hs-muted uppercase tracking-wider">Friends</h3>
+    <button onclick="openFriendModal()" class="p-0.5 hover:bg-white/10 rounded transition-colors"><span class="iconify text-hs-txt2" data-icon="lucide:user-plus" data-width="14"></span></button>
+  </div>
+  <div id="friends-list" class="flex flex-col gap-0.5 px-1 mb-2"></div>
+
+  <div class="border-t border-hs-border my-3 mx-2"></div>
+
+  <!-- Recents -->
+  <div class="px-3 mb-2"><h3 class="text-xs font-semibold text-hs-muted uppercase tracking-wider">Recent</h3></div>
+  <div id="recents-list" class="flex flex-col gap-0.5 px-1"></div>
+</aside>
+
+<!-- Main Content -->
+<main class="ml-[220px] mt-[48px] p-6 min-h-screen" id="main-content">
+
+  <!-- Hero Banner -->
+  <section class="mb-8 anim-in">
+    <div class="relative rounded-2xl overflow-hidden h-[200px] bg-gradient-to-br from-hs-purple/30 via-hs-deepPurple/20 to-hs-dark border border-hs-border">
+      <div class="absolute inset-0 flex items-center px-8">
+        <div>
+          <h1 class="text-3xl font-extrabold text-white mb-2">Host. Share. Play.</h1>
+          <p class="text-sm text-hs-txt2 max-w-md mb-4">Upload your HTML games and share them with the world. No downloads, no installs — just click and play.</p>
+          <div class="flex gap-3">
+            <button onclick="openHostModal()" class="bg-hs-purple hover:bg-hs-purpleHover text-white text-sm font-semibold px-5 py-2 rounded-lg transition-colors flex items-center gap-2"><span class="iconify" data-icon="lucide:upload" data-width="16"></span>Host a Game</button>
+            <button onclick="navigateTo('browse',document.querySelectorAll('.nav-item')[1],event)" class="bg-white/10 hover:bg-white/15 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors border border-white/10">Browse Games</button>
+          </div>
+        </div>
+      </div>
+      <div class="absolute right-8 top-1/2 -translate-y-1/2 hidden lg:flex gap-3">
+        <div class="w-16 h-16 bg-hs-purple/20 rounded-xl flex items-center justify-center backdrop-blur-sm"><span class="iconify text-hs-purple" data-icon="lucide:code-2" data-width="28"></span></div>
+        <div class="w-16 h-16 bg-hs-blue/20 rounded-xl flex items-center justify-center backdrop-blur-sm"><span class="iconify text-hs-blue" data-icon="lucide:globe" data-width="28"></span></div>
+        <div class="w-16 h-16 bg-hs-green/20 rounded-xl flex items-center justify-center backdrop-blur-sm"><span class="iconify text-hs-green" data-icon="lucide:play" data-width="28"></span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Your Games -->
+  <section class="mb-8 anim-in d1">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold text-white flex items-center gap-2"><span class="iconify text-hs-blue" data-icon="lucide:gamepad-2" data-width="20"></span>Your Games</h2>
+    </div>
+    <div id="my-games-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3"></div>
+    <div id="my-games-empty" class="hidden bg-hs-card border border-hs-border border-dashed rounded-xl p-10 text-center">
+      <span class="iconify text-hs-muted mx-auto mb-3" data-icon="lucide:upload-cloud" data-width="40"></span>
+      <p class="text-sm text-hs-txt2 mb-3">You haven't hosted any games yet</p>
+      <button onclick="openHostModal()" class="bg-hs-purple hover:bg-hs-purpleHover text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">Host Your First Game</button>
+    </div>
+  </section>
+
+  <!-- All Games / Browse -->
+  <section class="mb-8 anim-in d2">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold text-white flex items-center gap-2"><span class="iconify text-hs-green" data-icon="lucide:compass" data-width="20"></span>Browse All Games</h2>
+    </div>
+    <div class="flex items-center gap-2 flex-wrap mb-4" id="category-filters">
+      <button class="cat-pill active px-3 py-1 rounded-full text-xs font-medium" onclick="filterCat(this,'all')">All</button>
+      <button class="cat-pill bg-hs-card text-hs-txt2 px-3 py-1 rounded-full text-xs font-medium" onclick="filterCat(this,'Adventure')">Adventure</button>
+      <button class="cat-pill bg-hs-card text-hs-txt2 px-3 py-1 rounded-full text-xs font-medium" onclick="filterCat(this,'Puzzle')">Puzzle</button>
+      <button class="cat-pill bg-hs-card text-hs-txt2 px-3 py-1 rounded-full text-xs font-medium" onclick="filterCat(this,'Action')">Action</button>
+      <button class="cat-pill bg-hs-card text-hs-txt2 px-3 py-1 rounded-full text-xs font-medium" onclick="filterCat(this,'Strategy')">Strategy</button>
+      <button class="cat-pill bg-hs-card text-hs-txt2 px-3 py-1 rounded-full text-xs font-medium" onclick="filterCat(this,'Simulation')">Simulation</button>
+      <button class="cat-pill bg-hs-card text-hs-txt2 px-3 py-1 rounded-full text-xs font-medium" onclick="filterCat(this,'Horror')">Horror</button>
+      <button class="cat-pill bg-hs-card text-hs-txt2 px-3 py-1 rounded-full text-xs font-medium" onclick="filterCat(this,'Other')">Other</button>
+    </div>
+    <div id="all-games-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3"></div>
+    <div id="all-games-empty" class="hidden bg-hs-card border border-hs-border border-dashed rounded-xl p-10 text-center">
+      <span class="iconify text-hs-muted mx-auto mb-3" data-icon="lucide:ghost" data-width="40"></span>
+      <p class="text-sm text-hs-txt2">No games found. Be the first to host one!</p>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="border-t border-hs-border pt-8 pb-12 mt-12">
+    <div class="flex items-center justify-between">
+      <p class="text-[10px] text-hs-muted">© 2025 HSOB. All rights reserved. Hosted on GitHub Pages.</p>
+      <div class="flex gap-4">
+        <a href="#" class="text-[10px] text-hs-muted hover:text-white transition-colors">Terms</a>
+        <a href="#" class="text-[10px] text-hs-muted hover:text-white transition-colors">Privacy</a>
+      </div>
+    </div>
+  </footer>
+</main>
+
+</div><!-- end #app -->
+
+<script>
+// ==================== DATABASE (localStorage) ====================
+const DB = {
+  get(k) { try { return JSON.parse(localStorage.getItem('hsob_'+k)); } catch(e) { return null; } },
+  set(k,v) { localStorage.setItem('hsob_'+k, JSON.stringify(v)); },
+  getUsers() { return this.get('users') || []; },
+  setUsers(u) { this.set('users', u); },
+  getGames() { return this.get('games') || []; },
+  setGames(g) { this.set('games', g); },
+  getCurrentUser() { return this.get('currentUser'); },
+  setCurrentUser(u) { if(u) this.set('currentUser', u); else localStorage.removeItem('hsob_currentUser'); },
+  getBanned() { return this.get('banned') || []; },
+  setBanned(b) { this.set('banned', b); },
+  getComments(gid) { return this.get('comments_'+gid) || []; },
+  setComments(gid, c) { this.set('comments_'+gid, c); }
+};
+
+// Ensure Admin Account Exists
+function ensureAdmin() {
+  let users = DB.getUsers();
+  let admin = users.find(u => u.username === 'LagTactican');
+  if (!admin) {
+    users.push({ username: 'LagTactican', password: 'admin123', friends: [], isAdmin: true, createdAt: Date.now() });
+    DB.setUsers(users);
+  } else {
+    if (!admin.isAdmin) { admin.isAdmin = true; DB.setUsers(users); }
+  }
+}
+ensureAdmin();
+
+// ==================== AUTH ====================
+let currentUser = null;
+let currentGameId = null; // For comments
+
+function switchAuthTab(tab) {
+  document.getElementById('login-form').style.display = tab === 'login' ? 'flex' : 'none';
+  document.getElementById('register-form').style.display = tab === 'register' ? 'flex' : 'none';
+  document.getElementById('tab-login').className = tab==='login' ? 'flex-1 py-2 text-sm font-semibold rounded-md bg-hs-purple text-white transition-all' : 'flex-1 py-2 text-sm font-semibold rounded-md text-hs-txt2 transition-all';
+  document.getElementById('tab-register').className = tab==='register' ? 'flex-1 py-2 text-sm font-semibold rounded-md bg-hs-purple text-white transition-all' : 'flex-1 py-2 text-sm font-semibold rounded-md text-hs-txt2 transition-all';
+}
+
+function handleRegister(e) {
+  e.preventDefault();
+  const user = document.getElementById('reg-user').value.trim();
+  const pass = document.getElementById('reg-pass').value;
+  const pass2 = document.getElementById('reg-pass2').value;
+  if (pass !== pass2) return showToast('Passwords do not match', 'error');
+  let users = DB.getUsers();
+  if (users.find(u => u.username.toLowerCase() === user.toLowerCase())) return showToast('Username already taken', 'error');
+  
+  const banned = DB.getBanned();
+  if (banned.includes(user.toLowerCase())) return showToast('This username is banned', 'error');
+
+  const newUser = { username: user, password: pass, friends: [], isAdmin: false, createdAt: Date.now() };
+  users.push(newUser);
+  DB.setUsers(users);
+  DB.setCurrentUser(user);
+  currentUser = newUser;
+  document.getElementById('auth-modal').style.display = 'none';
+  initApp();
+  showToast(`Welcome to HSOB, ${user}!`, 'success');
+}
+
+function handleLogin(e) {
+  e.preventDefault();
+  const user = document.getElementById('login-user').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  let users = DB.getUsers();
+  const found = users.find(u => u.username.toLowerCase() === user.toLowerCase() && u.password === pass);
+  if (!found) return showToast('Invalid username or password', 'error');
+  
+  const banned = DB.getBanned();
+  if (banned.includes(found.username.toLowerCase())) return showToast('This account is banned.', 'error');
+
+  DB.setCurrentUser(found.username);
+  currentUser = found;
+  document.getElementById('auth-modal').style.display = 'none';
+  initApp();
+  showToast(`Welcome back, ${found.username}!`, 'success');
+}
+
+function logout() {
+  DB.setCurrentUser(null);
+  currentUser = null;
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('auth-modal').style.display = 'flex';
+  showToast('Logged out');
+}
+
+// ==================== APP INIT ====================
+function initApp() {
+  document.getElementById('app').style.display = 'block';
+  const users = DB.getUsers();
+  const uname = DB.getCurrentUser();
+  currentUser = users.find(u => u.username === uname) || { username: uname, friends: [], isAdmin: false };
+  
+  document.getElementById('nav-avatar').textContent = currentUser.username.charAt(0).toUpperCase();
+  
+  // Admin Badge
+  if (currentUser.isAdmin) {
+    document.getElementById('nav-badge').style.display = 'block';
+  } else {
+    document.getElementById('nav-badge').style.display = 'none';
+  }
+  
+  updateTotalVisits();
+  renderMyGames();
+  renderAllGames();
+  renderFriends();
+  renderRecents();
+}
+
+function updateTotalVisits() {
+  const games = DB.getGames().filter(g => g.owner === currentUser.username);
+  const total = games.reduce((s,g) => s + (g.visits||0), 0);
+  document.getElementById('total-visits').textContent = formatNum(total);
+}
+
+function formatNum(n) {
+  if (n >= 1000000) return (n/1000000).toFixed(1)+'M';
+  if (n >= 1000) return (n/1000).toFixed(1)+'K';
+  return n.toString();
+}
+
+// ==================== GAME CARDS ====================
+function createGameCard(game, isOwnerOrAdmin) {
+  const thumb = game.thumbnail || `https://picsum.photos/seed/${game.id}/300/300`;
+  const editBtn = (game.owner === currentUser.username) ? `<button onclick="event.stopPropagation();editGame('${game.id}')" class="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-black/80 rounded-lg transition-colors z-10"><span class="iconify text-white" data-icon="lucide:pencil" data-width="12"></span></button>` : '';
+  const delBtn = isOwnerOrAdmin ? `<button onclick="event.stopPropagation();deleteGame('${game.id}')" class="absolute top-2 left-2 p-1.5 bg-black/60 hover:bg-red-600/80 rounded-lg transition-colors z-10"><span class="iconify text-white" data-icon="lucide:trash-2" data-width="12"></span></button>` : '';
+  
+  return `
+    <div class="game-card bg-hs-card rounded-xl overflow-hidden cursor-pointer" onclick="playGame('${game.id}')">
+      <div class="relative overflow-hidden aspect-square">
+        <img src="${thumb}" class="game-thumb w-full h-full object-cover" loading="lazy" onerror="this.src='https://picsum.photos/seed/fallback${game.id}/300/300'">
+        <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+        ${editBtn}${delBtn}
+        <div class="absolute bottom-2 left-2 right-2 flex items-center justify-between">
+          <span class="text-[10px] text-hs-green font-medium flex items-center gap-1"><span class="iconify" data-icon="lucide:eye" data-width="10"></span>${formatNum(game.visits||0)}</span>
+          <span class="text-[10px] px-1.5 py-0.5 bg-white/10 rounded text-gray-300">${game.category||'Game'}</span>
+        </div>
+      </div>
+      <div class="p-2.5">
+        <h3 class="text-xs font-semibold text-white truncate">${game.name}</h3>
+        <p class="text-[10px] text-hs-muted truncate">by ${game.owner}</p>
+      </div>
+    </div>`;
+}
+
+function renderMyGames() {
+  const games = DB.getGames().filter(g => g.owner === currentUser.username);
+  const grid = document.getElementById('my-games-grid');
+  const empty = document.getElementById('my-games-empty');
+  if (games.length === 0) {
+    grid.innerHTML = ''; grid.style.display = 'none'; empty.style.display = 'block';
+  } else {
+    empty.style.display = 'none'; grid.style.display = 'grid';
+    grid.innerHTML = games.map(g => createGameCard(g, true)).join('');
+  }
+}
+
+let currentFilter = 'all';
+function renderAllGames(filter) {
+  let games = DB.getGames();
+  const search = (document.getElementById('searchInput')?.value || '').toLowerCase();
+  if (filter && filter !== 'all') games = games.filter(g => g.category === filter);
+  if (search) games = games.filter(g => g.name.toLowerCase().includes(search) || g.owner.toLowerCase().includes(search));
+  
+  const grid = document.getElementById('all-games-grid');
+  const empty = document.getElementById('all-games-empty');
+  if (games.length === 0) {
+    grid.innerHTML = ''; grid.style.display = 'none'; empty.style.display = 'block';
+  } else {
+    empty.style.display = 'none'; grid.style.display = 'grid';
+    // Admin can delete any game, normal users only their own
+    grid.innerHTML = games.map(g => createGameCard(g, currentUser.isAdmin || g.owner === currentUser.username)).join('');
+  }
+}
+
+function filterCat(el, cat) {
+  document.querySelectorAll('.cat-pill').forEach(p => { p.classList.remove('active'); p.classList.add('bg-hs-card','text-hs-txt2'); });
+  el.classList.add('active'); el.classList.remove('bg-hs-card','text-hs-txt2');
+  currentFilter = cat;
+  renderAllGames(cat);
+}
+
+function handleSearch(val) { renderAllGames(currentFilter); }
+
+// ==================== HOST GAME ====================
+function openHostModal() {
+  const m = document.getElementById('host-modal'); m.style.display = 'flex';
+  document.getElementById('host-name').value = '';
+  document.getElementById('host-desc').value = '';
+  document.getElementById('host-thumb').value = '';
+  document.getElementById('host-code').value = '';
+  document.getElementById('host-cat').value = 'Adventure';
+  document.getElementById('host-name').focus();
+}
+function closeHostModal() { document.getElementById('host-modal').style.display = 'none'; }
+
+function loadTemplate() {
+  document.getElementById('host-code').value = `<!DOCTYPE html>
+<html>
+<head>
+<title>My Game</title>
+<style>
+  body { margin:0; background:#1a1a2e; color:#eee; font-family:sans-serif; display:flex; align-items:center; justify-content:center; height:100vh; flex-direction:column; }
+  h1 { font-size:2rem; margin-bottom:1rem; }
+  button { background:#8b5cf6; color:#fff; border:none; padding:12px 24px; border-radius:8px; font-size:1rem; cursor:pointer; }
+  button:hover { background:#7c3aed; }
+  #score { font-size:1.2rem; margin:1rem 0; }
+</style>
+</head>
+<body>
+  <h1>My HSOB Game</h1>
+  <div id="score">Clicks: 0</div>
+  <button onclick="clicker()">Click Me!</button>
+  <script>
+    let count = 0;
+    function clicker() {
+      count++;
+      document.getElementById('score').textContent = 'Clicks: ' + count;
+    }
+  <\/script>
+</body>
+</html>`;
+  showToast('Template loaded!', 'success');
+}
+
+function handleHostGame(e) {
+  e.preventDefault();
+  const name = document.getElementById('host-name').value.trim();
+  const desc = document.getElementById('host-desc').value.trim();
+  const thumb = document.getElementById('host-thumb').value.trim();
+  const code = document.getElementById('host-code').value;
+  const cat = document.getElementById('host-cat').value;
+  if (!code.trim()) return showToast('Please add HTML code for your game', 'error');
+  const game = {
+    id: 'g_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
+    name, description: desc, thumbnail: thumb, code, category: cat,
+    owner: currentUser.username, visits: 0, createdAt: Date.now()
+  };
+  let games = DB.getGames();
+  games.push(game);
+  DB.setGames(games);
+  closeHostModal();
+  renderMyGames(); renderAllGames(currentFilter); updateTotalVisits();
+  showToast(`"${name}" is now live!`, 'success');
+}
+
+function deleteGame(id) {
+  if (!confirm('Delete this game permanently?')) return;
+  let games = DB.getGames();
+  games = games.filter(g => g.id !== id);
+  DB.setGames(games);
+  // Remove comments too
+  localStorage.removeItem('hsob_comments_'+id);
+  renderMyGames(); renderAllGames(currentFilter); updateTotalVisits();
+  showToast('Game deleted');
+}
+
+function editGame(id) {
+  let games = DB.getGames();
+  const game = games.find(g => g.id === id);
+  if (!game) return;
+  openHostModal();
+  document.getElementById('host-name').value = game.name;
+  document.getElementById('host-desc').value = game.description || '';
+  document.getElementById('host-thumb').value = game.thumbnail || '';
+  document.getElementById('host-code').value = game.code;
+  document.getElementById('host-cat').value = game.category || 'Other';
+  
+  const form = document.getElementById('host-modal').querySelector('form');
+  form.onsubmit = function(e) {
+    e.preventDefault();
+    game.name = document.getElementById('host-name').value.trim();
+    game.description = document.getElementById('host-desc').value.trim();
+    game.thumbnail = document.getElementById('host-thumb').value.trim();
+    game.code = document.getElementById('host-code').value;
+    game.category = document.getElementById('host-cat').value;
+    DB.setGames(games);
+    closeHostModal();
+    renderMyGames(); renderAllGames(currentFilter); updateTotalVisits();
+    showToast(`"${game.name}" updated!`, 'success');
+    form.onsubmit = handleHostGame;
+  };
+}
+
+// ==================== PLAY GAME ====================
+function playGame(id) {
+  let games = DB.getGames();
+  const game = games.find(g => g.id === id);
+  if (!game) return;
+  
+  // Increment visits
+  game.visits = (game.visits || 0) + 1;
+  DB.setGames(games);
+  
+  // Add to recents
+  addRecent(game);
+  
+  // Open player
+  currentGameId = id;
+  document.getElementById('game-player').style.display = 'flex';
+  document.getElementById('player-title').textContent = game.name;
+  document.getElementById('player-visits').querySelector('span').textContent = formatNum(game.visits);
+  document.getElementById('game-iframe').srcdoc = game.code;
+  
+  renderComments(id);
+  updateTotalVisits();
+  renderAllGames(currentFilter);
+  renderMyGames();
+}
+
+function closeGamePlayer() {
+  document.getElementById('game-player').style.display = 'none';
+  document.getElementById('game-iframe').srcdoc = '';
+  currentGameId = null;
+}
+
+function toggleFullscreen() {
+  const el = document.getElementById('game-player');
+  if (!document.fullscreenElement) el.requestFullscreen().catch(()=>{});
+  else document.exitFullscreen();
+}
+
+// ==================== COMMENTS ====================
+function renderComments(gameId) {
+  const comments = DB.getComments(gameId);
+  const list = document.getElementById('comments-list');
+  
+  if (comments.length === 0) {
+    list.innerHTML = '<p class="text-xs text-hs-muted text-center py-4">No comments yet.</p>';
+    return;
+  }
+  
+  const banned = DB.getBanned();
+  
+  list.innerHTML = comments.map(c => {
+    const isMod = c.user === 'LagTactican';
+    const isAdminUser = currentUser && currentUser.isAdmin;
+    const canDelete = isAdminUser || c.user === currentUser.username;
+    const canBan = isAdminUser && !isMod && !banned.includes(c.user.toLowerCase());
+    
+    const modBadge = isMod ? '<span class="px-1.5 py-0.5 rounded text-[8px] font-bold bg-hs-deepPurple text-hs-purple border border-hs-purple/30">MOD</span>' : '';
+    const banBtn = canBan ? `<button onclick="banUser('${c.user}')" class="text-[9px] text-hs-red hover:text-red-400 font-medium transition-colors">Ban</button>` : '';
+    const delBtn = canDelete ? `<button onclick="deleteComment('${gameId}','${c.id}')" class="text-[9px] text-hs-muted hover:text-hs-red font-medium transition-colors">Delete</button>` : '';
+    
+    return `
+      <div class="bg-hs-dark rounded-lg p-3 border border-hs-border/50">
+        <div class="flex items-center gap-2 mb-1.5">
+          <div class="w-5 h-5 rounded-full bg-gradient-to-br from-hs-purple to-hs-deepPurple flex items-center justify-center text-white text-[8px] font-bold shrink-0">${c.user.charAt(0).toUpperCase()}</div>
+          <span class="text-[11px] font-semibold text-hs-txt truncate">${c.user}</span>
+          ${modBadge}
+          <div class="ml-auto flex items-center gap-2">${banBtn}${delBtn}</div>
+        </div>
+        <p class="text-xs text-hs-txt2 leading-relaxed">${escapeHtml(c.text)}</p>
+        <p class="text-[9px] text-hs-muted mt-1.5">${timeAgo(c.timestamp)}</p>
+      </div>`;
+  }).join('');
+}
+
+function postComment(e) {
+  e.preventDefault();
+  if (!currentGameId) return;
+  const input = document.getElementById('comment-input');
+  const text = input.value.trim();
+  if (!text) return;
+  
+  const comments = DB.getComments(currentGameId);
+  comments.push({
+    id: 'c_' + Date.now(),
+    user: currentUser.username,
+    text: text,
+    timestamp: Date.now()
+  });
+  DB.setComments(currentGameId, comments);
+  input.value = '';
+  renderComments(currentGameId);
+}
+
+function deleteComment(gameId, commentId) {
+  let comments = DB.getComments(gameId);
+  comments = comments.filter(c => c.id !== commentId);
+  DB.setComments(gameId, comments);
+  renderComments(gameId);
+  showToast('Comment deleted');
+}
+
+// ==================== ADMIN ACTIONS ====================
+function banUser(username) {
+  if (!confirm(`Ban ${username}? They will not be able to log in.`)) return;
+  let banned = DB.getBanned();
+  if (!banned.includes(username.toLowerCase())) {
+    banned.push(username.toLowerCase());
+    DB.setBanned(banned);
+    showToast(`${username} has been banned.`, 'success');
+    // Re-render comments if open
+    if (currentGameId) renderComments(currentGameId);
+    renderFriends(); // Update friend list if banned user is there
+  }
+}
+
+// ==================== RECENTS ====================
+function addRecent(game) {
+  let recents = DB.get('recents_'+currentUser.username) || [];
+  recents = recents.filter(r => r.id !== game.id);
+  recents.unshift({ id: game.id, name: game.name, thumbnail: game.thumbnail, owner: game.owner, playedAt: Date.now() });
+  if (recents.length > 10) recents = recents.slice(0, 10);
+  DB.set('recents_'+currentUser.username, recents);
+  renderRecents();
+}
+
+function renderRecents() {
+  const recents = DB.get('recents_'+currentUser.username) || [];
+  const list = document.getElementById('recents-list');
+  if (recents.length === 0) {
+    list.innerHTML = '<p class="text-[10px] text-hs-muted px-3 py-2">No recent games</p>';
+    return;
+  }
+  list.innerHTML = recents.map(r => `
+    <a href="#" class="nav-item flex items-center gap-3 px-3 py-2 rounded-lg text-xs text-hs-txt2 hover:text-hs-txt transition-colors" onclick="event.preventDefault();playGame('${r.id}')">
+      <img src="${r.thumbnail || `https://picsum.photos/seed/${r.id}/48/48`}" class="w-6 h-6 rounded object-cover" onerror="this.src='https://picsum.photos/seed/fb${r.id}/48/48'">
+      <span class="truncate">${r.name}</span>
+    </a>`).join('');
+}
+
+// ==================== FRIENDS ====================
+function openFriendModal() {
+  document.getElementById('friend-modal').style.display = 'flex';
+  document.getElementById('friend-user').value = '';
+  document.getElementById('friend-user').focus();
+}
+function closeFriendModal() { document.getElementById('friend-modal').style.display = 'none'; }
+
+function handleAddFriend(e) {
+  e.preventDefault();
+  const target = document.getElementById('friend-user').value.trim();
+  if (target.toLowerCase() === currentUser.username.toLowerCase()) return showToast("Can't add yourself!", 'error');
+  let users = DB.getUsers();
+  const found = users.find(u => u.username.toLowerCase() === target.toLowerCase());
+  if (!found) return showToast('User not found', 'error');
+  const me = users.find(u => u.username === currentUser.username);
+  if (me.friends && me.friends.map(f=>f.toLowerCase()).includes(found.username.toLowerCase())) return showToast('Already friends!', 'error');
+  if (!me.friends) me.friends = [];
+  me.friends.push(found.username);
+  if (!found.friends) found.friends = [];
+  if (!found.friends.includes(me.username)) found.friends.push(me.username);
+  DB.setUsers(users);
+  currentUser = me;
+  closeFriendModal();
+  renderFriends();
+  showToast(`${found.username} is now your friend!`, 'success');
+}
+
+function removeFriend(username) {
+  if (!confirm(`Remove ${username} from friends?`)) return;
+  let users = DB.getUsers();
+  const me = users.find(u => u.username === currentUser.username);
+  const them = users.find(u => u.username === username);
+  if (me && me.friends) me.friends = me.friends.filter(f => f !== username);
+  if (them && them.friends) them.friends = them.friends.filter(f => f !== currentUser.username);
+  DB.setUsers(users);
+  currentUser = me;
+  renderFriends();
+  showToast(`${username} removed`);
+}
+
+function renderFriends() {
+  const list = document.getElementById('friends-list');
+  const banned = DB.getBanned();
+  
+  if (!currentUser.friends || currentUser.friends.length === 0) {
+    list.innerHTML = '<p class="text-[10px] text-hs-muted px-3 py-2">No friends yet. Add someone!</p>';
+    return;
+  }
+  const users = DB.getUsers();
+  list.innerHTML = currentUser.friends.map(fname => {
+    const f = users.find(u => u.username === fname);
+    const isBanned = banned.includes(fname.toLowerCase());
+    const isAdminUser = currentUser.isAdmin;
+    const banBtn = isAdminUser && !isBanned && fname !== 'LagTactican' ? `<button onclick="banUser('${fname}')" class="text-[8px] text-hs-red hover:text-red-400 font-medium transition-colors ml-1">Ban</button>` : '';
+    const bannedTag = isBanned ? '<span class="text-[8px] text-hs-red">[BANNED]</span>' : '';
+    
+    return `
+      <div class="friend-row flex items-center gap-3 px-2 py-2 rounded-lg transition-colors group">
+        <div class="relative shrink-0">
+          <div class="w-7 h-7 rounded-full bg-gradient-to-br from-hs-purple to-hs-deepPurple flex items-center justify-center text-white text-[10px] font-bold">${fname.charAt(0).toUpperCase()}</div>
+          ${!isBanned ? '<span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-hs-green rounded-full border-2 border-hs-sidebar online-dot"></span>' : ''}
+        </div>
+        <div class="flex flex-col flex-1 min-w-0">
+          <span class="text-xs text-hs-txt truncate">${fname} ${bannedTag}</span>
+        </div>
+        ${banBtn}
+        <button onclick="removeFriend('${fname}')" class="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-red-500/20 rounded transition-all"><span class="iconify text-hs-txt2 hover:text-red-400" data-icon="lucide:x" data-width="12"></span></button>
+      </div>`;
+  }).join('');
+}
+
+// ==================== NAV ====================
+function navigateTo(section, el, event) {
+  if (event) event.preventDefault();
+  document.querySelectorAll('.nav-item').forEach(n => { n.classList.remove('active'); n.classList.add('text-hs-txt2'); });
+  if (el) { el.classList.add('active'); el.classList.remove('text-hs-txt2'); }
+  if (section === 'browse') document.getElementById('all-games-grid').scrollIntoView({ behavior: 'smooth' });
+  else if (section === 'my-games') document.getElementById('my-games-grid').scrollIntoView({ behavior: 'smooth' });
+  else window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ==================== TOAST ====================
+function showToast(msg, type='default') {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  const bg = type==='success'?'bg-hs-green':type==='error'?'bg-hs-red':'bg-hs-card border border-hs-border';
+  const ico = type==='success'?'lucide:check-circle':type==='error'?'lucide:x-circle':'lucide:info';
+  t.className = `toast ${bg} rounded-xl px-4 py-3 shadow-2xl flex items-center gap-3 max-w-sm`;
+  t.innerHTML = `<span class="iconify text-white shrink-0" data-icon="${ico}" data-width="18"></span><span class="text-sm text-white font-medium">${msg}</span>`;
+  c.appendChild(t);
+  setTimeout(()=>{ t.classList.remove('toast'); t.classList.add('toast-out'); setTimeout(()=>t.remove(),300); },2500);
+}
+
+// ==================== UTILS ====================
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.appendChild(document.createTextNode(text));
+  return div.innerHTML;
+}
+
+function timeAgo(timestamp) {
+  const seconds = Math.floor((Date.now() - timestamp) / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return minutes + 'm ago';
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return hours + 'h ago';
+  const days = Math.floor(hours / 24);
+  return days + 'd ago';
+}
+
+// ==================== BOOT ====================
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = DB.getCurrentUser();
+  if (saved) {
+    const users = DB.getUsers();
+    const found = users.find(u => u.username === saved);
+    const banned = DB.getBanned();
+    if (found && !banned.includes(found.username.toLowerCase())) {
+      currentUser = found;
+      document.getElementById('auth-modal').style.display = 'none';
+      initApp();
+      return;
+    } else {
+      DB.setCurrentUser(null);
+    }
+  }
+  document.getElementById('auth-modal').style.display = 'flex';
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+    e.preventDefault(); document.getElementById('searchInput')?.focus();
+  }
+  if (e.key === 'Escape') {
+    closeHostModal(); closeFriendModal(); closeGamePlayer();
+  }
+});
+</script>
+</body>
+</html>
