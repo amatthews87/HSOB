@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HSOB - Host & Play</title>
+<title>HSOB — Host & Play</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -244,8 +244,7 @@ body{font-family:'Inter',sans-serif;background:#0d0b14;color:#e2dff0;overflow-x:
 </div>
 
 <script>
-// ===================== FIREBASE SETUP =====================
-// PASTE YOUR FIREBASE CONFIG HERE:
+// ===================== YOUR FIREBASE CONFIG =====================
 const firebaseConfig = {
   apiKey: "AIzaSyBTMbFLvtotshp6fKWJkxFNq5_Zv9ZGJYs",
   authDomain: "hsob-bf7a5.firebaseapp.com",
@@ -256,16 +255,13 @@ const firebaseConfig = {
   appId: "1:1005903606896:web:1010d7c9acbd80771430b5",
   measurementId: "G-JSGTX4XNP1"
 };
+
 let db;
 try {
   firebase.initializeApp(firebaseConfig);
   db = firebase.firestore();
-  if (firebaseConfig.apiKey === "AIzaSyBTMbFLvtotshp6fKWJkxFNq5_Zv9ZGJYs") {
-    console.warn("Firebase not configured. Running in local demo mode.");
-    db = null; 
-  }
 } catch(e) {
-  console.warn("Firebase init failed. Running in local demo mode.", e);
+  console.error("Firebase init failed", e);
   db = null;
 }
 
@@ -345,7 +341,6 @@ async function handleRegister(e) {
   }
   
   currentUser = userData;
-  if (db) { /* server */ } else { LocalDB.set('currentUser', user); }
   document.getElementById('auth-modal').style.display = 'none';
   initApp();
   showToast(`Welcome to HSOB, ${user}!`, 'success');
@@ -376,7 +371,6 @@ async function handleLogin(e) {
   }
 
   currentUser = userData;
-  if (!db) LocalDB.set('currentUser', user);
   document.getElementById('auth-modal').style.display = 'none';
   initApp();
   showToast(`Welcome back, ${userData.username}!`, 'success');
@@ -384,7 +378,6 @@ async function handleLogin(e) {
 
 function logout() {
   currentUser = null;
-  if (!db) LocalDB.set('currentUser', null);
   document.getElementById('app').style.display = 'none';
   document.getElementById('auth-modal').style.display = 'flex';
   showToast('Logged out');
@@ -394,7 +387,6 @@ function logout() {
 function initApp() {
   document.getElementById('app').style.display = 'block';
   
-  // Nav avatar
   const navAvatarContainer = document.getElementById('nav-avatar-container');
   if (currentUser.pfp) {
     navAvatarContainer.innerHTML = `<img src="${currentUser.pfp}" class="pfp-img w-full h-full" onerror="this.parentElement.innerHTML='<span id=nav-avatar-letter>${currentUser.username.charAt(0).toUpperCase()}</span>'">`;
@@ -562,7 +554,7 @@ async function playGame(id) {
     const doc = await db.collection('games').doc(id).get();
     game = { id: doc.id, ...doc.data() };
     await db.collection('games').doc(id).update({ visits: firebase.firestore.FieldValue.increment(1) });
-    game.visits = (game.visits || 0) + 1; // instant UI update
+    game.visits = (game.visits || 0) + 1;
   } else {
     let games = LocalDB.get('games')||[];
     game = games.find(g=>g.id===id);
@@ -601,13 +593,12 @@ function loadComments(gameId) {
   list.innerHTML = '<p class="text-xs text-hs-muted text-center py-4">Loading...</p>';
 
   if (db) {
-    // Real-time listener
     unsubComments = db.collection('comments').where('gameId', '==', gameId).orderBy('timestamp', 'asc').onSnapshot(snap => {
       const comments = []; snap.forEach(doc => comments.push({ id: doc.id, ...doc.data() }));
       renderComments(comments);
     }, err => {
       console.error(err);
-      list.innerHTML = '<p class="text-xs text-hs-red text-center py-4">Error loading comments (Check Firestore Indexes).</p>';
+      list.innerHTML = '<p class="text-xs text-hs-red text-center py-4">Error loading comments. (Check Firestore Indexes in Console)</p>';
     });
   } else {
     const comments = (LocalDB.get('comments_'+gameId) || []).sort((a,b) => a.timestamp - b.timestamp);
@@ -699,7 +690,6 @@ async function viewProfile(username) {
     games = (LocalDB.get('games')||[]).filter(g => g.owner === userData.username);
   }
 
-  // Populate Modal
   document.getElementById('prof-pfp-container').innerHTML = getPfpHtml(userData.username, userData.pfp, 'w-full h-full');
   document.getElementById('prof-name').textContent = userData.username;
   document.getElementById('prof-mod-badge').style.display = userData.isAdmin ? 'inline' : 'none';
@@ -708,7 +698,6 @@ async function viewProfile(username) {
   document.getElementById('prof-sub').textContent = `${formatNum(totalVisits)} visits • ${games.length} games`;
   document.getElementById('prof-about').textContent = userData.aboutMe || 'No bio yet.';
 
-  // Actions
   const actDiv = document.getElementById('prof-actions');
   actDiv.innerHTML = '';
   if (userData.username !== currentUser.username) {
@@ -721,7 +710,6 @@ async function viewProfile(username) {
     actDiv.innerHTML = `<button onclick="closeModal('profile-modal');openModal('edit-modal');loadEditProfile()" class="flex-1 bg-hs-purple hover:bg-hs-purpleHover text-white text-xs font-semibold py-2 rounded-lg transition-colors">Edit Profile</button>`;
   }
 
-  // Games
   const gamesDiv = document.getElementById('prof-games');
   gamesDiv.innerHTML = games.slice(0,6).map(g => {
     const thumb = g.thumbnail || `https://picsum.photos/seed/${g.id}/150/150`;
@@ -752,7 +740,7 @@ async function handleEditProfile(e) {
     if (i >= 0) { users[i] = currentUser; LocalDB.set('users', users); }
   }
 
-  initApp(); // Refresh UI
+  initApp();
   closeModal('edit-modal');
   showToast('Profile updated!', 'success');
 }
@@ -830,10 +818,8 @@ async function renderFriends() {
     list.innerHTML = '<p class="text-[10px] text-hs-muted px-3 py-2">No friends yet.</p>'; return;
   }
 
-  // Fetch latest PFPS for friends
   let friendDataMap = {};
   if (db) {
-    // Firestore 'in' queries support max 30 items
     const chunks = []; const arr = [...currentUser.friends];
     for(let i=0; i<arr.length; i+=30) chunks.push(arr.slice(i,i+30));
     for(const chunk of chunks) {
@@ -888,8 +874,16 @@ function navigateTo(section, el, event) {
 
 // ==================== BOOT ====================
 window.addEventListener('DOMContentLoaded', async () => {
-  if (!db) {
-    // Fallback: Ensure Admin Exists Locally
+  if (db) {
+    const adminRef = db.collection('users').doc('lagtactican');
+    const adminDoc = await adminRef.get();
+    if (!adminDoc.exists) {
+      const hash = await hashPwd('admin123');
+      await adminRef.set({ username: 'LagTactican', passwordHash: hash, pfp: '', aboutMe: 'Platform Administrator', isAdmin: true, friends: [], createdAt: Date.now() });
+    } else if (!adminDoc.data().isAdmin) {
+      await adminRef.update({ isAdmin: true });
+    }
+  } else {
     let users = LocalDB.get('users') || [];
     if (!users.find(u => u.username === 'LagTactican')) {
       const hash = await hashPwd('admin123');
@@ -899,7 +893,6 @@ window.addEventListener('DOMContentLoaded', async () => {
       const admin = users.find(u => u.username === 'LagTactican');
       if (!admin.isAdmin) { admin.isAdmin = true; LocalDB.set('users', users); }
     }
-
     const saved = LocalDB.get('currentUser');
     if (saved) {
       const found = users.find(u => u.username === saved);
@@ -909,16 +902,6 @@ window.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('auth-modal').style.display = 'none';
         initApp(); return;
       } else LocalDB.set('currentUser', null);
-    }
-  } else {
-    // Ensure Admin on Firebase
-    const adminRef = db.collection('users').doc('lagtactican');
-    const adminDoc = await adminRef.get();
-    if (!adminDoc.exists) {
-      const hash = await hashPwd('admin123');
-      await adminRef.set({ username: 'LagTactican', passwordHash: hash, pfp: '', aboutMe: 'Platform Administrator', isAdmin: true, friends: [], createdAt: Date.now() });
-    } else if (!adminDoc.data().isAdmin) {
-      await adminRef.update({ isAdmin: true });
     }
   }
   document.getElementById('auth-modal').style.display = 'flex';
